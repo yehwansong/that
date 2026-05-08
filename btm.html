@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sand2</title>
+<style>
+  * { touch-action: none; pointer-events: none; }
+  #btn { pointer-events: auto; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #006838 url('field.jpg') center/cover no-repeat; }
+  #box {
+    position: fixed;
+    width: 50vw;
+    height: 50vw;
+    background: url('sheep.gif') center/cover no-repeat;
+    background-color: #006838;
+    transform-origin: center center;
+  }
+  #debug {
+    position: fixed;
+    top: 16px; right: 16px;
+    color: white;
+    font-family: monospace;
+    font-size: 12px;
+    z-index: 10;
+    white-space: pre;
+  }
+  #btn {
+    position: fixed;
+    bottom: 40px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255,255,255,0.1);
+    border: 1px solid white;
+    color: white;
+    font-family: monospace;
+    font-size: 15px;
+    padding: 14px 28px;
+    border-radius: 8px;
+    cursor: pointer;
+    z-index: 10;
+  }
+</style>
+</head>
+<body>
+<div id="box"></div>
+<div id="debug">waiting...</div>
+<button id="btn">tap to enable</button>
+<script>
+  const box   = document.getElementById('box');
+  const debug = document.getElementById('debug');
+  const btn   = document.getElementById('btn');
+
+  let targetAngle = 0, smoothAngle = 0;
+
+  function lerpAngle(a, b, t) {
+    return a + (((b - a + 540) % 360) - 180) * t;
+  }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  function bounceSettle(t) {
+    return Math.sin(t * Math.PI * 4.5) * (1 - t) * 0.4;
+  }
+
+  function getLeftSeg1(offset, s) {
+    if (offset <= 5)  return lerp(s, 0, offset / 5);
+    if (offset <= 15) return bounceSettle((offset - 5) / 10) * s;
+    return 0;
+  }
+
+  function getLeftSeg2(offset, s) {
+    if (offset <= 5)  return lerp(0, s, offset / 5);
+    if (offset <= 15) return s + bounceSettle((offset - 5) / 10) * s;
+    return s;
+  }
+
+  function getState(a) {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const s  = vw * 0.5;
+
+    // 310→270 (decreasing, wraparound): range = 360-310+270 = 320deg... 
+    // wait: 310 decreasing to 270 = 40deg range
+    // a goes 310→300→...→270
+    if (a >= 270 && a <= 310) {
+      const t = (310 - a) / 40;
+      return [lerp(-s, vh, t), getLeftSeg1(310 - a, s), true, 'scaleX(-1) rotate(270deg)'];
+    }
+
+    // 130→90 (decreasing): range = 40deg
+    if (a >= 90 && a <= 130) {
+      const t = (130 - a) / 40;
+      return [lerp(vh, -s, t), getLeftSeg2(130 - a, s), true, 'rotate(270deg)'];
+    }
+
+    return [0, 0, false, 'rotate(270deg) scaleY(-1)'];
+  }
+
+  function loop() {
+    smoothAngle = lerpAngle(smoothAngle, targetAngle, 0.1);
+    const a = ((smoothAngle % 360) + 360) % 360;
+    const [top, left, visible, tx] = getState(a);
+    box.style.top       = top + 'px';
+    box.style.left      = left + 'px';
+    box.style.opacity   = visible ? '1' : '0';
+    box.style.transform = tx;
+    box.style.backgroundImage = (a >= 90 && a <= 130) ? "url('sheep.gif')" : "url('sheep_re.gif')";
+    debug.textContent   = `angle: ${a.toFixed(1)}°\ntop: ${top.toFixed(0)}px left: ${left.toFixed(0)}px`;
+    requestAnimationFrame(loop);
+  }
+
+  requestAnimationFrame(loop);
+
+  function handleMotion(e) {
+    if (btn.parentNode) btn.remove();
+    const g = e.accelerationIncludingGravity;
+    if (!g) return;
+    let x = g.x ?? 0, y = g.y ?? 0, z = g.z ?? 0;
+    const inPlane = Math.sqrt(x*x + y*y);
+    let angle = Math.atan2(x, -y) * (180 / Math.PI);
+    if (z > 0 && inPlane < 3) angle += 180;
+    targetAngle = angle;
+  }
+
+  function startSensors() {
+    if (typeof DeviceMotionEvent !== 'undefined' &&
+        typeof DeviceMotionEvent.requestPermission === 'function') {
+      DeviceMotionEvent.requestPermission()
+        .then(state => {
+          if (state === 'granted') window.addEventListener('devicemotion', handleMotion, true);
+  document.addEventListener('touchstart', e => e.preventDefault(), {passive: false});
+  document.addEventListener('touchmove', e => e.preventDefault(), {passive: false});
+          debug.textContent = 'permission: ' + state;
+        })
+        .catch(err => debug.textContent = 'err: ' + err);
+    } else {
+      window.addEventListener('devicemotion', handleMotion, true);
+  document.addEventListener('touchstart', e => e.preventDefault(), {passive: false});
+  document.addEventListener('touchmove', e => e.preventDefault(), {passive: false});
+    }
+  }
+
+  btn.addEventListener('click', startSensors);
+  window.addEventListener('devicemotion', handleMotion, true);
+  document.addEventListener('touchstart', e => e.preventDefault(), {passive: false});
+  document.addEventListener('touchmove', e => e.preventDefault(), {passive: false});
+</script>
+</body>
+</html>
