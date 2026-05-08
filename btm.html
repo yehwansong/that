@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sand2</title>
 <style>
+  * { touch-action: none; pointer-events: none; }
+  #btn { pointer-events: auto; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 100%; height: 100%; overflow: hidden; background: #006838 url('field.jpg') center/cover no-repeat; }
   #box {
@@ -108,8 +110,8 @@
   }
 
   requestAnimationFrame(loop);
-
-  function handleMotion(e) {
+ 
+  function handleMotion(e) {     
     if (btn.parentNode) btn.remove();
     const g = e.accelerationIncludingGravity;
     if (!g) return;
@@ -126,19 +128,22 @@
       DeviceMotionEvent.requestPermission()
         .then(state => {
           if (state === 'granted') window.addEventListener('devicemotion', handleMotion, true);
-  
+  document.addEventListener('touchstart', e => e.preventDefault(), {passive: false});
+  document.addEventListener('touchmove', e => e.preventDefault(), {passive: false});
           debug.textContent = 'permission: ' + state;
         })
         .catch(err => debug.textContent = 'err: ' + err);
     } else {
       window.addEventListener('devicemotion', handleMotion, true);
-  
+  document.addEventListener('touchstart', e => e.preventDefault(), {passive: false});
+  document.addEventListener('touchmove', e => e.preventDefault(), {passive: false});
     }
   }
 
   btn.addEventListener('click', startSensors);
   window.addEventListener('devicemotion', handleMotion, true);
-  
+  document.addEventListener('touchstart', e => e.preventDefault(), {passive: false});
+  document.addEventListener('touchmove', e => e.preventDefault(), {passive: false});
 </script>
 </body>
-</html>
+</html> 
